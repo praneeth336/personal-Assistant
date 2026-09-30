@@ -3,7 +3,6 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Google Gemini API](https://img.shields.io/badge/Google_Gemini-2.5_Flash-886FBF?logo=google-gemini&logoColor=white)](https://ai.google.dev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device-00ff9d)](docs/FEATURES.md#privacy)
 
 > **J.A.R.V.I.S. (Just A Rather Very Intelligent System)** is an advanced, privacy-focused personal AI task management assistant designed to help users organize, track, and complete their goals with step-by-step guidance, automated plan correction, voice interaction, and Google Gemini AI intelligence.
@@ -97,7 +96,6 @@ personal-assistant/
 ├── package.json                # Project dependencies & scripts
 ├── vite.config.js              # Vite server & build setup
 ├── README.md                   # Project documentation
-├── LICENSE                     # MIT License
 ├── docs/                       # Architectural & feature documentation
 │   ├── ARCHITECTURE.md
 │   └── FEATURES.md
@@ -124,9 +122,3 @@ personal-assistant/
 
 * **Zero Cloud Data Leakage**: All user memories, task matrices, and permission settings are stored strictly in your browser's private `localStorage` sandbox.
 * **Ethical Guardrails**: Built-in safety filters enforce zero tolerance for illegal, malicious, or harmful instructions.
-
----
-
-## 📜 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
