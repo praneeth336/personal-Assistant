@@ -2,16 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Mic, MicOff, Volume2, VolumeX, Send, Sparkles, ShieldCheck, Cpu, 
   Terminal, RefreshCw, AlertCircle, Plus, Database, Copy, Check, 
-  Lightbulb, ArrowRight, CheckCircle2, Target, ChevronRight, Zap, Globe, Key
+  Lightbulb, ArrowRight, CheckCircle2, Target, ChevronRight, Zap, Globe, Key, Wifi, WifiOff
 } from 'lucide-react';
-import { queryJARVIS } from '../services/aiService';
+import { queryJARVIS, queryOfflineJarvis } from '../services/aiService';
+import { fetchOpenSourceData } from '../services/openSearchService';
 
 export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safetyLogs, onSafetyViolation }) {
   const [messages, setMessages] = useState([
     {
       id: 'init-1',
       sender: 'jarvis',
-      text: "Greetings. I am JARVIS, powered by Google Gemini AI (gemini-2.5-flash). Ask me any question, request specified information, or seek task guidance. I will generate complete, clear, and detailed answers for you.",
+      text: "Greetings. I am JARVIS. I support both Online (Google Gemini AI) and 100% On-Device Offline mode so you can organize your tasks and work seamlessly anywhere.",
       timestamp: new Date().toLocaleTimeString(),
       type: 'greeting'
     }
@@ -22,6 +23,9 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
   const [speechEnabled, setSpeechEnabled] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+  
+  // Dual Engine Mode: 'auto' (online with auto offline fallback) vs 'offline' (forced on-device)
+  const [engineMode, setEngineMode] = useState('auto');
 
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -141,9 +145,21 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
       return;
     }
 
-    // Call Google Gemini API
+    // Process Response via Engine (Online API or On-Device Offline Engine)
     try {
-      const payload = await queryJARVIS(trimmed);
+      let payload;
+      const isOfflineMode = engineMode === 'offline' || (typeof navigator !== 'undefined' && !navigator.onLine);
+
+      if (isOfflineMode) {
+        payload = queryOfflineJarvis(trimmed);
+      } else {
+        const lower = trimmed.toLowerCase();
+        if (lower.startsWith('add task') || lower.startsWith('remind me') || lower.startsWith('remember that')) {
+          payload = await queryJARVIS(trimmed, false);
+        } else {
+          payload = await fetchOpenSourceData(trimmed);
+        }
+      }
 
       const botMsg = {
         id: (Date.now() + 1).toString(),
@@ -154,9 +170,9 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
       };
 
       setMessages(prev => [...prev, botMsg]);
-      speakText(`${payload.summary}. Response compiled by Gemini AI.`);
+      speakText(`${payload.summary}. Output compiled successfully.`);
     } catch (err) {
-      console.error("Gemini AI query error:", err);
+      console.error("AI query error:", err);
     } finally {
       setIsProcessing(false);
     }
@@ -179,11 +195,11 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
   const handleQuickSaveMemory = (msgPayload) => {
     if (onMemoryAdd && msgPayload) {
       onMemoryAdd({
-        category: 'Gemini AI Response',
+        category: msgPayload.isOpenSource ? 'Open Source Knowledge Brief' : 'JARVIS Strategy Recommendation',
         content: `${msgPayload.summary}: ${msgPayload.generatedOutput?.slice(0, 300)}...`,
         timestamp: new Date().toLocaleDateString()
       });
-      alert(`🧠 Saved Gemini response to your Jarvis Brain memory vault!`);
+      alert(`🧠 Saved retrieved information to your Jarvis Brain memory vault!`);
     }
   };
 
@@ -202,7 +218,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
             <Cpu style={{ color: 'var(--accent-cyan)' }} size={20} />
             <span>AI CORE V4.2</span>
           </div>
-          <div className="hud-sub">GOOGLE GEMINI 2.5 FLASH</div>
+          <div className="hud-sub">HYBRID ONLINE / OFFLINE ENGINE</div>
         </div>
 
         {/* Dynamic Holographic Sphere Visualizer */}
@@ -245,11 +261,60 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
             color: '#fff',
             boxShadow: 'var(--cyan-glow)'
           }}>
-            <Sparkles size={28} style={{ animation: 'spinSlow 10s linear infinite' }} />
+            {engineMode === 'offline' ? <WifiOff size={28} color="#ffb703" /> : <Sparkles size={28} style={{ animation: 'spinSlow 10s linear infinite' }} />}
           </div>
         </div>
 
-        {/* Voice & Speech Controls */}
+        {/* Engine Mode Toggle (Online vs Offline) */}
+        <div style={{ width: '100%', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', background: 'rgba(5, 8, 17, 0.8)', padding: '0.3rem', borderRadius: '8px', border: '1px solid var(--border-cyan)' }}>
+            <button
+              onClick={() => setEngineMode('auto')}
+              style={{
+                flex: 1,
+                background: engineMode === 'auto' ? 'var(--accent-cyan)' : 'transparent',
+                color: engineMode === 'auto' ? '#04060d' : 'var(--text-muted)',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0.4rem',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-sub)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.3rem'
+              }}
+            >
+              <Wifi size={12} /> ONLINE
+            </button>
+
+            <button
+              onClick={() => setEngineMode('offline')}
+              style={{
+                flex: 1,
+                background: engineMode === 'offline' ? 'var(--accent-amber)' : 'transparent',
+                color: engineMode === 'offline' ? '#04060d' : 'var(--text-muted)',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0.4rem',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-sub)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.3rem'
+              }}
+            >
+              <WifiOff size={12} /> OFFLINE
+            </button>
+          </div>
+        </div>
+
+        {/* Voice Controls */}
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
           <button 
             onClick={toggleListening} 
@@ -282,8 +347,8 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
             />
           </div>
 
-          <div className="hud-badge hud-badge-cyan" style={{ width: '100%', justifyContent: 'center' }}>
-            <Key size={14} /> GEMINI API ACTIVE
+          <div className={`hud-badge ${engineMode === 'offline' ? 'hud-badge-purple' : 'hud-badge-cyan'}`} style={{ width: '100%', justifyContent: 'center' }}>
+            <ShieldCheck size={14} /> {engineMode === 'offline' ? '100% ON-DEVICE OFFLINE MODE' : 'HYBRID AI ENGINE ACTIVE'}
           </div>
         </div>
       </div>
@@ -294,7 +359,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-cyan)', marginBottom: '1rem' }}>
           <div className="hud-title" style={{ fontSize: '1rem' }}>
             <Terminal size={18} />
-            <span>AI COMMAND & GEMINI INTELLIGENCE CONSOLE</span>
+            <span>AI COMMAND & KNOWLEDGE CONSOLE</span>
           </div>
           <button 
             onClick={() => setMessages([messages[0]])} 
@@ -306,13 +371,13 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
           </button>
         </div>
 
-        {/* Gemini Quick Preset Chips */}
+        {/* Quick Recommendation Preset Chips */}
         <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
           {[
-            "🌐 What is Quantum Computing?",
-            "🚀 Explain Docker containers completely",
-            "⚡ How do Python Generators work?",
-            "📊 Break down project schedule strategy"
+            "⚡ Recommend schedule optimizations",
+            "🚀 Break down project execution steps",
+            "📊 Recommend workload priorities",
+            "✍️ Generate email action plan"
           ].map((preset, idx) => (
             <button
               key={idx}
@@ -347,7 +412,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
                 <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-hud)', color: msg.sender === 'user' ? 'var(--accent-purple)' : 'var(--accent-cyan)' }}>
-                  {msg.sender === 'user' ? 'OPERATOR' : 'JARVIS AI (GEMINI)'}
+                  {msg.sender === 'user' ? 'OPERATOR' : 'JARVIS AI'}
                 </span>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{msg.timestamp}</span>
               </div>
@@ -368,7 +433,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
                   {msg.text}
                 </div>
               ) : (
-                /* JARVIS Response Card with Complete Gemini AI Output */
+                /* JARVIS Response Card with Complete Output */
                 <div 
                   style={{
                     maxWidth: '96%',
@@ -387,15 +452,16 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
                     gap: '0.85rem'
                   }}
                 >
-                  {/* Headline Summary & Gemini Badge */}
+                  {/* Headline Summary & Provider Badge */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <div style={{ fontSize: '1.05rem', fontWeight: '600', color: msg.isSafetyAlert ? '#ff4d79' : '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       {msg.isSafetyAlert ? <AlertCircle size={18} /> : <Sparkles size={18} color="var(--accent-cyan)" />}
                       {msg.text}
                     </div>
                     {msg.payload?.providerName && (
-                      <span className="hud-badge hud-badge-green" style={{ fontSize: '0.75rem' }}>
-                        <Sparkles size={12} /> {msg.payload.providerName}
+                      <span className={`hud-badge ${msg.payload.isLiveAI ? 'hud-badge-green' : 'hud-badge-purple'}`} style={{ fontSize: '0.75rem' }}>
+                        {msg.payload.isLiveAI ? <Wifi size={10} /> : <WifiOff size={10} />}
+                        {msg.payload.providerName}
                       </span>
                     )}
                   </div>
@@ -437,12 +503,12 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
                         </div>
                       )}
 
-                      {/* Complete Gemini AI Generated Output Box */}
+                      {/* Complete Output Box */}
                       {msg.payload.generatedOutput && (
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                             <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-hud)', color: 'var(--accent-purple)' }}>
-                              COMPLETE GEMINI AI ANSWER & DETAILED OUTPUT
+                              COMPLETE WORK OUTPUT BRIEF
                             </span>
                             <button 
                               onClick={() => copyText(msg.id, msg.payload.generatedOutput)} 
@@ -463,7 +529,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
                             lineHeight: '1.6',
                             color: '#00f3ff',
                             whiteSpace: 'pre-wrap',
-                            maxHeight: '360px',
+                            maxHeight: '340px',
                             overflowY: 'auto'
                           }}>
                             {msg.payload.generatedOutput}
@@ -486,7 +552,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
                           className="hud-btn" 
                           style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
                         >
-                          <Database size={14} color="var(--accent-purple)" /> SAVE TO BRAIN MEMORY
+                          <Database size={14} color="var(--accent-purple)" /> SAVE FULL BRIEF TO BRAIN
                         </button>
                       </div>
                     </>
@@ -497,7 +563,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
           ))}
           {isProcessing && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>
-              <Sparkles className="spin-slow" size={14} /> Google Gemini AI (gemini-2.5-flash) is generating complete answer...
+              <Cpu className="spin-slow" size={14} /> Processing request via {engineMode === 'offline' ? 'JARVIS Offline Local Engine' : 'Hybrid Intelligence Engine'}...
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -511,7 +577,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
           <input 
             type="text"
             className="hud-input"
-            placeholder="Ask Gemini AI anything (e.g. 'What is Quantum Computing?', 'Write project schedule')..."
+            placeholder={engineMode === 'offline' ? "Type command for Offline Local Engine..." : "Ask JARVIS for recommendations, task breakdowns, output drafts..."}
             value={inputQuery}
             onChange={e => setInputQuery(e.target.value)}
             disabled={isProcessing}
