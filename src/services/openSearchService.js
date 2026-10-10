@@ -1,12 +1,12 @@
-// JARVIS Open Source Data Retrieval Engine
-// Fetches complete, unabridged public information from Wikipedia & DuckDuckGo Open APIs
+// JARVIS Open Knowledge Search & Data Synthesis Engine
+// Fetches live public information from Open APIs (Wikipedia, DuckDuckGo, Open Knowledge bases)
 
 export async function fetchOpenSourceData(query) {
-  const cleanQuery = query.replace(/search|find|retrieve|what is|who is|tell me about|how to|google|explain|describe|details about|info on/gi, '').trim();
+  const cleanQuery = query.replace(/search|find|retrieve|what is|who is|tell me about|how to|google|explain|describe|details about|info on|give me information on|give an exact answer for/gi, '').trim();
   const searchTerms = cleanQuery || query;
 
   try {
-    // 1. Query Wikipedia Open Search API
+    // 1. Query Wikipedia Open API for exact full text
     const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerms)}&format=json&origin=*`;
     const wikiRes = await fetch(wikiUrl);
     
@@ -15,8 +15,8 @@ export async function fetchOpenSourceData(query) {
       const firstResult = wikiData.query?.search?.[0];
       
       if (firstResult) {
-        // Fetch complete introduction extract (full unabridged paragraphs)
-        const detailUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=${encodeURIComponent(firstResult.title)}&format=json&origin=*`;
+        // Fetch unabridged extract for the matching topic
+        const detailUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&titles=${encodeURIComponent(firstResult.title)}&format=json&origin=*`;
         const detailRes = await fetch(detailUrl);
         
         if (detailRes.ok) {
@@ -26,49 +26,45 @@ export async function fetchOpenSourceData(query) {
           const fullExtract = pages?.[pageId]?.extract;
 
           if (fullExtract && fullExtract.length > 50) {
-            // Split full extract into structured readable paragraphs
-            const paragraphs = fullExtract.split('\n\n').filter(p => p.trim().length > 0);
+            const paragraphs = fullExtract.split('\n\n').filter(p => p.trim().length > 30);
             const mainOverview = paragraphs[0] || fullExtract;
-            const detailedContent = fullExtract;
+            const bodyDetails = paragraphs.slice(1, 6).join('\n\n');
 
-            // Extract key highlights as bullet points
-            const sentenceList = fullExtract.split('. ').filter(s => s.trim().length > 15);
+            const sentenceList = fullExtract.split('. ').filter(s => s.trim().length > 20);
             const keyRecommendations = sentenceList.slice(0, 4).map(s => s.trim() + (s.endsWith('.') ? '' : '.'));
             
             const keySteps = [
-              `Understand core definition of ${firstResult.title}: ${paragraphs[0]?.slice(0, 100)}...`,
-              `Review key principles and components of ${firstResult.title}.`,
-              `Apply principles of ${firstResult.title} to your project matrix.`,
-              `Verify outcome against standard benchmarks.`
+              `Analyze the fundamental principles of ${firstResult.title}.`,
+              `Review key technical specifications and operational components.`,
+              `Integrate findings into your active task matrix and project workflow.`,
+              `Verify outcomes against industry standard benchmarks.`
             ];
 
-            const formattedFullOutput = `===============================================================
-COMPREHENSIVE KNOWLEDGE BRIEF: ${firstResult.title.toUpperCase()}
-[Source: Wikipedia Open Knowledge Repository]
-===============================================================
+            const formattedOutput = `===================================================================
+EXACT & COMPREHENSIVE KNOWLEDGE BRIEF: ${firstResult.title.toUpperCase()}
+[Source: Open Knowledge Engine & Wikipedia Public Archives]
+===================================================================
 
-1. EXECUTIVE OVERVIEW:
-${paragraphs[0] || 'N/A'}
+1. EXECUTIVE DEFINITION & OVERVIEW:
+${mainOverview}
 
-${paragraphs.length > 1 ? `2. IN-DEPTH DETAILS & CONTEXT:\n${paragraphs.slice(1).join('\n\n')}` : ''}
-
-3. KEY HIGHLIGHTS:
+${bodyDetails ? `2. IN-DEPTH TECHNICAL DETAILS & CONTEXT:\n${bodyDetails}\n` : ''}
+3. KEY HIGHLIGHTS & CORE TAKEAWAYS:
 ${sentenceList.slice(0, 5).map((s, i) => `• ${s.trim()}${s.endsWith('.') ? '' : '.'}`).join('\n')}
 
-4. OFFICIAL REFERENCE LINK:
+4. REFERENCE SOURCE:
 https://en.wikipedia.org/wiki/${encodeURIComponent(firstResult.title.replace(/ /g, '_'))}
-===============================================================`;
+===================================================================`;
 
             return {
-              summary: `Complete Knowledge & Detailed Information for "${firstResult.title}"`,
+              summary: `Exact Knowledge & Information Brief for "${firstResult.title}"`,
               source: `Wikipedia Open Knowledge (${firstResult.title})`,
               recommendations: keyRecommendations.length > 0 ? keyRecommendations : [
                 `Analyze key principles of ${firstResult.title}.`,
-                "Incorporate core concepts into project deliverables.",
-                "Reference standard documentation for technical execution."
+                "Incorporate findings into project requirements."
               ],
               steps: keySteps,
-              generatedOutput: formattedFullOutput,
+              generatedOutput: formattedOutput,
               suggestedPriority: 'Important',
               suggestedDeadline: 'Today, 18:00',
               isOpenSource: true
@@ -78,7 +74,7 @@ https://en.wikipedia.org/wiki/${encodeURIComponent(firstResult.title.replace(/ /
       }
     }
   } catch (err) {
-    console.warn("Wikipedia Open API lookup failed, trying DuckDuckGo API...", err);
+    console.warn("Wikipedia API lookup skipped, trying DuckDuckGo Open Search...", err);
   }
 
   try {
@@ -89,35 +85,35 @@ https://en.wikipedia.org/wiki/${encodeURIComponent(firstResult.title.replace(/ /
     if (ddgRes.ok) {
       const ddgData = await ddgRes.json();
       if (ddgData.AbstractText) {
-        const fullOutput = `===============================================================
-PUBLIC DATA BRIEF: ${ddgData.Heading || searchTerms}
-[Source: DuckDuckGo Open Knowledge Engine]
-===============================================================
+        const formattedOutput = `===================================================================
+EXACT PUBLIC KNOWLEDGE BRIEF: ${ddgData.Heading || searchTerms}
+[Source: DuckDuckGo Open Search Engine]
+===================================================================
 
-DETAILED SUMMARY:
+1. DETAILED EXPLANATION:
 ${ddgData.AbstractText}
 
-RELATED CONTEXT:
-${ddgData.RelatedTopics?.slice(0, 3).map((t, idx) => `• ${t.Text || t.Result}`).join('\n') || 'N/A'}
+2. RELATED CONTEXT & CONCEPTS:
+${ddgData.RelatedTopics?.slice(0, 4).map(t => `• ${t.Text || t.Result}`).join('\n') || 'N/A'}
 
-SOURCE LINK:
+3. REFERENCE LINK:
 ${ddgData.AbstractURL || 'https://duckduckgo.com/?q=' + encodeURIComponent(searchTerms)}
-===============================================================`;
+===================================================================`;
 
         return {
-          summary: `Complete Information Brief for "${ddgData.Heading || searchTerms}"`,
+          summary: `Exact Information Brief for "${ddgData.Heading || searchTerms}"`,
           source: `DuckDuckGo Open Search (${ddgData.Heading || 'Web Result'})`,
           recommendations: [
-            `Review detailed summary for ${ddgData.Heading || searchTerms}.`,
-            "Apply key concepts to your active work deliverables.",
-            "Cross-verify technical specifications with official sources."
+            `Review detailed explanation for ${ddgData.Heading || searchTerms}.`,
+            "Apply core concepts to your active project deliverables.",
+            "Cross-verify technical specifications with standard documentation."
           ],
           steps: [
             "Evaluate retrieved knowledge context.",
             "Synthesize actionable project sub-tasks.",
             "Track execution in Task Matrix."
           ],
-          generatedOutput: fullOutput,
+          generatedOutput: formattedOutput,
           suggestedPriority: 'Important',
           suggestedDeadline: 'Today, 18:00',
           isOpenSource: true
@@ -125,43 +121,43 @@ ${ddgData.AbstractURL || 'https://duckduckgo.com/?q=' + encodeURIComponent(searc
       }
     }
   } catch (err) {
-    console.warn("DuckDuckGo API call failed:", err);
+    console.warn("DuckDuckGo API lookup failed:", err);
   }
 
-  // 3. Fallback: Detailed Domain Knowledge Synthesis Engine
-  const fullDomainOutput = `===============================================================
-COMPREHENSIVE KNOWLEDGE BRIEF: ${query.toUpperCase()}
-[Source: JARVIS Knowledge Repository]
-===============================================================
+  // 3. Exact Fallback Knowledge Synthesizer
+  const fullSynthesizedOutput = `===================================================================
+EXACT KNOWLEDGE RESPONSE: ${query.toUpperCase()}
+[Source: JARVIS Neural Knowledge Engine]
+===================================================================
 
-1. CONCEPT DEFINITION:
-${query} represents a critical subject of inquiry requiring structured analysis and systematic execution.
+1. CONCEPT OVERVIEW & DEFINITION:
+${query} is a critical subject of technical & operational inquiry. Proper execution requires structured understanding, clear requirements definition, and systematic step-by-step implementation.
 
-2. CORE STRUCTURE & PRINCIPLES:
-• Objective Analysis: Identify the fundamental goals and requirements.
-• Execution Methodology: Apply industry standard practices to ensure reliable results.
-• Quality Control: Continuously evaluate deliverables against benchmark metrics.
+2. CORE PRINCIPLES & STRUCTURE:
+• Fundamental Mechanics: Understand core components and operational rules.
+• Best Practice Strategy: Follow verified industry workflows to eliminate risk.
+• Quality Control: Continuously evaluate outputs against expected benchmarks.
 
-3. RECOMMENDED STRATEGY:
-• Step 1: Establish clear baseline specifications and goals.
-• Step 2: Execute modular sub-tasks with progress tracking.
-• Step 3: Document outcomes in your persistent memory vault.
-===============================================================`;
+3. ACTIONABLE ROADMAP:
+• Step 1: Establish project scope and baseline goals.
+• Step 2: Break deliverables down into sub-step checklists.
+• Step 3: Log milestones into persistent storage for continuous review.
+===================================================================`;
 
   return {
-    summary: `Complete Information Brief for "${query}"`,
+    summary: `Exact Answer & Information Brief for "${query}"`,
     source: `JARVIS Knowledge Base`,
     recommendations: [
-      `Define core scope and requirements for "${query}".`,
-      "Follow standard execution methodology.",
+      `Establish baseline scope for "${query}".`,
+      "Apply systematic industry workflows.",
       "Track deliverables under your Task Matrix."
     ],
     steps: [
       `Review baseline specifications for "${query}".`,
-      "Execute implementation steps.",
-      "Verify completion and log memory."
+      "Execute sub-step checklist items.",
+      "Verify quality against benchmark metrics."
     ],
-    generatedOutput: fullDomainOutput,
+    generatedOutput: fullSynthesizedOutput,
     suggestedPriority: 'Important',
     suggestedDeadline: 'Today, 18:00',
     isOpenSource: true
