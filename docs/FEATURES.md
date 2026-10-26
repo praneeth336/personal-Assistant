@@ -6,13 +6,13 @@ Detailed reference guide for all interactive panels and capabilities available i
 
 ## 1. 🎙️ AI Core Console ([JarvisCore.jsx](file:///c:/Users/praneeth/Desktop/my_projects/personal%20assistent/src/components/JarvisCore.jsx))
 * **Reactive Holographic Visualizer**: Pulsing cyan/purple sphere reflecting microphone listening, processing, and voice synthesis states.
-* **Google Gemini AI Integration**: Live generation powered by `gemini-2.5-flash`.
-* **Structured Response Cards**: Every query generates:
-  * Executive Overview
-  * Key Strategic Recommendations
-  * Actionable Step-by-Step Breakdown
-  * Complete Unabridged Output Box (with 1-click **COPY FULL TEXT** button)
-  * One-Click **ADD STEPS TO TASK MATRIX** and **SAVE TO BRAIN MEMORY** buttons.
+* **Direct ChatGPT & Gemini-Style Responses**: Direct, natural, and comprehensive answers without robotic boilerplate or artificial preambles.
+* **Rich Cybernetic Markdown Engine ([MarkdownViewer.jsx](file:///c:/Users/praneeth/Desktop/my_projects/personal%20assistent/src/components/MarkdownViewer.jsx))**:
+  * Formatted headings, bold emphasis, bullet points, and numbered lists.
+  * Fenced code blocks with language identifiers and a 1-click **Copy Code** button.
+  * Verified external citations and sources at the bottom (Wikipedia, DuckDuckGo) with direct links.
+* **Hybrid Intelligence Engine**: Works seamlessly with free Open Web Knowledge (Wikipedia REST & DuckDuckGo), on-device offline intelligence, or connected Google Gemini / OpenAI keys.
+* **Smart Task Matrix Integration**: Only presents task creation buttons when the user explicitly requests to add, plan, or schedule a task.
 
 ---
 

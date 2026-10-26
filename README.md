@@ -11,11 +11,12 @@
 
 ## 🌟 Key Features
 
-### 1. 🎙️ AI Core & Voice Command Console
-* **Reactive Holographic Core**: Interactive animated visualizer reacting in real time during listening, processing, and speaking states.
-* **Google Gemini AI (`gemini-2.5-flash`)**: Powered by Google Gemini API to generate complete, clear, and unabridged responses.
-* **Web Speech API**: Hands-free voice recognition microphone input and text-to-speech audio feedback.
-* **1-Click Actions**: Instantly export generated action steps to your Task Matrix or save outputs to your Jarvis Brain.
+### 1. 🎙️ AI Core & Direct Knowledge Console
+* **Direct ChatGPT & Gemini-Style Output**: Delivers clear, conversational, exact answers immediately without unnecessary task matrix clutter or robotic boilerplate.
+* **Cybernetic Markdown Engine**: Beautiful formatting with headers, bullet points, syntax-highlighted code blocks with 1-click copy, and verified web citations.
+* **Free Public Knowledge & Search**: Fetches live encyclopedic information from Wikipedia REST API and DuckDuckGo with zero API keys required.
+* **External AI Integration**: Optionally connect Google Gemini or OpenAI ChatGPT API keys for frontier LLM reasoning.
+* **Web Speech Voice Interaction**: Hands-free voice recognition input and dynamic audio response output.
 
 ### 2. 📋 Eisenhower Task & Goal Matrix
 * **Quadrant Prioritization**: Organize work into *Urgent & Important*, *High Priority*, *Routine Work*, and *Low Priority*.

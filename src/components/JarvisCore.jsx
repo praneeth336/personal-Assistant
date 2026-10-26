@@ -9,13 +9,14 @@ import { queryJARVIS, queryOfflineJarvis } from '../services/aiService';
 import { fetchOpenSourceData } from '../services/openSearchService';
 import { detectAppCommand, launchApp } from '../services/appLauncherService';
 import SecurityAuthModal from './SecurityAuthModal';
+import MarkdownViewer from './MarkdownViewer';
 
 export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safetyLogs, onSafetyViolation, onAuditLog }) {
   const [messages, setMessages] = useState([
     {
       id: 'init-1',
       sender: 'jarvis',
-      text: "Greetings. I am JARVIS. I can manage your tasks, open applications by name (e.g., 'JARVIS open YouTube' or 'open Gmail'), enforce security authorization on sensitive apps, and generate comprehensive intelligence briefs. How may I assist you today?",
+      text: "Greetings, Operator. I am **J.A.R.V.I.S.** You can ask me any question directly, request code or calculations, launch applications by name (*'open youtube'*, *'open gmail'*), or plan tasks. How may I assist you today?",
       timestamp: new Date().toLocaleTimeString(),
       type: 'greeting'
     }
@@ -219,49 +220,57 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
       return;
     }
 
-    // 2. Process General Intelligence via Engine (Online API or On-Device Offline Engine)
+    // 2. Process General Intelligence via Direct Knowledge & AI Engine
     try {
-      let payload;
       const isOfflineMode = engineMode === 'offline' || (typeof navigator !== 'undefined' && !navigator.onLine);
-
-      if (isOfflineMode) {
-        payload = await queryOfflineJarvis(trimmed);
-      } else {
-        const lower = trimmed.toLowerCase();
-        if (lower.startsWith('add task') || lower.startsWith('remind me') || lower.startsWith('remember that')) {
-          payload = await queryJARVIS(trimmed, false);
-        } else {
-          payload = await fetchOpenSourceData(trimmed);
-        }
-      }
+      const payload = isOfflineMode 
+        ? await queryOfflineJarvis(trimmed) 
+        : await queryJARVIS(trimmed, false);
 
       const botMsg = {
         id: (Date.now() + 1).toString(),
         sender: 'jarvis',
-        text: payload.summary,
+        text: payload.answer || payload.summary || "Response generated.",
+        answer: payload.answer,
+        sources: payload.sources || [],
+        providerName: payload.providerName || "JARVIS Intelligence",
+        isTaskAction: payload.isTaskAction || false,
+        taskData: payload.taskData || null,
         payload: payload,
         timestamp: new Date().toLocaleTimeString()
       };
 
       setMessages(prev => [...prev, botMsg]);
-      speakText(`${payload.summary}. Output compiled successfully.`);
+      
+      const firstLine = (payload.answer || payload.summary || '')
+        .split('\n')
+        .find(l => l.trim() && !l.trim().startsWith('#')) || payload.summary;
+      if (firstLine) speakText(firstLine);
     } catch (err) {
       console.error("AI query error:", err);
+      const errorMsg = {
+        id: (Date.now() + 1).toString(),
+        sender: 'jarvis',
+        text: "An error occurred while synthesizing your answer. Please retry or verify your network connection.",
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Quick Action: Add generated steps directly into Task Matrix
+  // Quick Action: Add task directly into Task Matrix when requested
   const handleQuickAddTask = (msgPayload, queryText) => {
     if (onTaskAdd && msgPayload) {
+      const task = msgPayload.taskData || {};
       onTaskAdd({
-        title: msgPayload.summary || queryText,
-        category: msgPayload.suggestedPriority || 'Urgent',
-        deadline: msgPayload.suggestedDeadline || 'Today, 18:00',
-        subtasks: msgPayload.steps || ['Execute step 1', 'Execute step 2']
+        title: task.title || msgPayload.summary || queryText,
+        category: task.priority || 'Important',
+        deadline: task.deadline || 'Today, 18:00',
+        subtasks: ['Review requirements', 'Execute deliverable']
       });
-      alert(`✅ Task & generated sub-steps added to your Task Matrix!`);
+      alert(`✅ Task added to your Task Matrix!`);
     }
   };
 
@@ -453,22 +462,23 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
           </button>
         </div>
 
-        {/* Quick Command Preset Chips (Including Application Launchers) */}
+        {/* Quick Command Preset Chips (App Launchers & Direct Knowledge Queries) */}
         <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
           {[
             { label: "▶️ Open YouTube", cmd: "jarvis open youtube" },
-            { label: "🔒 Open Gmail (Protected)", cmd: "jarvis open gmail" },
+            { label: "🔒 Open Gmail", cmd: "jarvis open gmail" },
+            { label: "🧠 Quantum Computing?", cmd: "What is quantum computing?" },
+            { label: "🐍 Python reverse string", cmd: "write python code to reverse a string" },
             { label: "🐙 Open GitHub", cmd: "jarvis open github" },
-            { label: "💬 Open WhatsApp", cmd: "jarvis open whatsapp" },
-            { label: "⚡ Recommend schedule", cmd: "Recommend schedule optimizations" }
+            { label: "🧮 15% of 850", cmd: "15% of 850" }
           ].map((preset, idx) => (
             <button
               key={idx}
               onClick={() => { setInputQuery(preset.cmd); handleSend(preset.cmd); }}
               style={{
-                background: preset.cmd.includes('gmail') || preset.cmd.includes('whatsapp') ? 'rgba(255, 0, 85, 0.1)' : 'rgba(0, 243, 255, 0.08)',
-                border: preset.cmd.includes('gmail') || preset.cmd.includes('whatsapp') ? '1px solid rgba(255, 0, 85, 0.4)' : '1px solid var(--border-cyan)',
-                color: preset.cmd.includes('gmail') || preset.cmd.includes('whatsapp') ? '#ff4d79' : 'var(--accent-cyan)',
+                background: preset.cmd.includes('gmail') ? 'rgba(255, 0, 85, 0.1)' : 'rgba(0, 243, 255, 0.08)',
+                border: preset.cmd.includes('gmail') ? '1px solid rgba(255, 0, 85, 0.4)' : '1px solid var(--border-cyan)',
+                color: preset.cmd.includes('gmail') ? '#ff4d79' : 'var(--accent-cyan)',
                 borderRadius: '16px',
                 padding: '0.3rem 0.75rem',
                 fontSize: '0.75rem',
@@ -590,7 +600,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
                   </div>
                 </div>
               ) : (
-                /* Standard Response Card */
+                /* Direct Intelligence Answer Card (ChatGPT & Gemini Style) */
                 <div 
                   style={{
                     maxWidth: '96%',
@@ -599,119 +609,60 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
                     borderRadius: '12px 12px 12px 2px',
                     background: msg.isSafetyAlert
                       ? 'rgba(255, 0, 85, 0.15)'
-                      : 'linear-gradient(135deg, rgba(0, 243, 255, 0.1), rgba(5, 8, 17, 0.95))',
+                      : 'linear-gradient(135deg, rgba(0, 243, 255, 0.08), rgba(5, 8, 17, 0.96))',
                     border: msg.isSafetyAlert
                       ? '1px solid #ff0055'
                       : '1px solid var(--border-cyan)',
-                    boxShadow: '0 4px 20px rgba(0,243,255,0.08)',
+                    boxShadow: '0 4px 20px rgba(0,243,255,0.06)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '0.85rem'
+                    gap: '0.75rem'
                   }}
                 >
-                  {/* Headline Summary & Provider Badge */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div style={{ fontSize: '1.05rem', fontWeight: '600', color: msg.isSafetyAlert ? '#ff4d79' : '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {msg.isSafetyAlert ? <AlertCircle size={18} /> : <Sparkles size={18} color="var(--accent-cyan)" />}
-                      {msg.text}
+                  {/* Top Bar: Provider Badge & Action Buttons */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.45rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', color: msg.isSafetyAlert ? '#ff4d79' : 'var(--accent-cyan)', fontWeight: 'bold', fontFamily: 'var(--font-hud)' }}>
+                      {msg.isSafetyAlert ? <AlertCircle size={15} /> : <Sparkles size={15} />}
+                      <span>{msg.providerName || (msg.isSafetyAlert ? 'SAFETY GUARD' : 'JARVIS INTELLIGENCE')}</span>
                     </div>
-                    {msg.payload?.source && (
-                      <span className="hud-badge hud-badge-green" style={{ fontSize: '0.75rem' }}>
-                        <Globe size={10} /> {msg.payload.source}
-                      </span>
-                    )}
+
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                      <button
+                        onClick={() => speakText((msg.answer || msg.text || '').replace(/[#*`_~]/g, ''))}
+                        className="hud-btn"
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}
+                        title="Read aloud"
+                      >
+                        <Volume2 size={12} />
+                      </button>
+                      <button 
+                        onClick={() => copyText(msg.id, msg.answer || msg.text)} 
+                        className="hud-btn" 
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}
+                        title="Copy answer"
+                      >
+                        {copiedId === msg.id ? <Check size={12} color="var(--accent-green)" /> : <Copy size={12} />}
+                        <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Rich Payload Section */}
-                  {msg.payload && (
-                    <>
-                      {/* JARVIS Recommendations Box */}
-                      {msg.payload.recommendations && msg.payload.recommendations.length > 0 && (
-                        <div style={{ background: 'rgba(5, 8, 17, 0.7)', padding: '0.85rem', borderRadius: '8px', borderLeft: '3px solid var(--accent-cyan)' }}>
-                          <div style={{ fontSize: '0.8rem', fontFamily: 'var(--font-hud)', color: 'var(--accent-cyan)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <Lightbulb size={14} /> KEY TAKEAWAYS & RECOMMENDATIONS
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                            {msg.payload.recommendations.map((rec, i) => (
-                              <div key={i} style={{ fontSize: '0.85rem', color: 'var(--text-main)', display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
-                                <ChevronRight size={14} color="var(--accent-cyan)" style={{ marginTop: '3px', flexShrink: 0 }} />
-                                <span>{rec}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                  {/* Direct Answer Prose Rendered with Markdown */}
+                  <div style={{ color: 'var(--text-main)', fontSize: '0.92rem' }}>
+                    <MarkdownViewer content={msg.answer || msg.text} sources={msg.sources || msg.payload?.sources} />
+                  </div>
 
-                      {/* Step-by-Step Action Breakdown */}
-                      {msg.payload.steps && msg.payload.steps.length > 0 && (
-                        <div style={{ background: 'rgba(5, 8, 17, 0.7)', padding: '0.85rem', borderRadius: '8px', borderLeft: '3px solid var(--accent-green)' }}>
-                          <div style={{ fontSize: '0.8rem', fontFamily: 'var(--font-hud)', color: 'var(--accent-green)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <Target size={14} /> ACTIONABLE STEP-BY-STEP WORKFLOW
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                            {msg.payload.steps.map((step, i) => (
-                              <div key={i} style={{ fontSize: '0.85rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span style={{ color: 'var(--accent-green)', fontWeight: 'bold', fontSize: '0.75rem' }}>Step {i+1}:</span>
-                                <span>{step}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Complete Output Box */}
-                      {msg.payload.generatedOutput && (
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                            <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-hud)', color: 'var(--accent-purple)' }}>
-                              COMPLETE WORK OUTPUT BRIEF
-                            </span>
-                            <button 
-                              onClick={() => copyText(msg.id, msg.payload.generatedOutput)} 
-                              className="hud-btn" 
-                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
-                            >
-                              {copiedId === msg.id ? <Check size={12} color="var(--accent-green)" /> : <Copy size={12} />}
-                              {copiedId === msg.id ? 'COPIED FULL TEXT' : 'COPY FULL TEXT'}
-                            </button>
-                          </div>
-                          <pre style={{ 
-                            background: 'rgba(5, 8, 17, 0.95)', 
-                            border: '1px solid var(--border-cyan)', 
-                            borderRadius: '8px', 
-                            padding: '0.9rem', 
-                            fontFamily: 'var(--font-code)', 
-                            fontSize: '0.85rem',
-                            lineHeight: '1.6',
-                            color: '#00f3ff',
-                            whiteSpace: 'pre-wrap',
-                            maxHeight: '340px',
-                            overflowY: 'auto'
-                          }}>
-                            {msg.payload.generatedOutput}
-                          </pre>
-                        </div>
-                      )}
-
-                      {/* One-Click Quick Action Buttons */}
-                      <div style={{ display: 'flex', gap: '0.6rem', pt: '0.4rem', flexWrap: 'wrap' }}>
-                        <button 
-                          onClick={() => handleQuickAddTask(msg.payload, msg.text)} 
-                          className="hud-btn hud-btn-primary" 
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
-                        >
-                          <Plus size={14} /> ADD STEPS TO TASK MATRIX
-                        </button>
-
-                        <button 
-                          onClick={() => handleQuickSaveMemory(msg.payload)} 
-                          className="hud-btn" 
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
-                        >
-                          <Database size={14} color="var(--accent-purple)" /> SAVE FULL BRIEF TO BRAIN
-                        </button>
-                      </div>
-                    </>
+                  {/* Task Matrix Action (ONLY shown when user explicitly asks for task/scheduling) */}
+                  {msg.isTaskAction && (
+                    <div style={{ marginTop: '0.4rem', paddingTop: '0.6rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <button 
+                        onClick={() => handleQuickAddTask(msg.payload, msg.text)} 
+                        className="hud-btn hud-btn-primary" 
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.78rem' }}
+                      >
+                        <Plus size={14} /> ADD "{msg.taskData?.title || 'TASK'}" TO TASK MATRIX
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
