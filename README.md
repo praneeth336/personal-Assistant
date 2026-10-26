@@ -42,6 +42,11 @@
 ### 7. 📊 Work Analytics Dashboard
 * Real-time metrics for completion rates, efficiency scores, priority bottlenecks, and AI productivity insights.
 
+### 8. 🚀 Application Launcher & Security Authorization Vault
+* **Voice & Text App Launching**: Say or type `"JARVIS open YouTube"`, `"open youtude"`, `"open Gmail"`, `"open GitHub"`, `"launch Spotify"`, etc.
+* **Security Authorization & Password Protection**: Secured applications (e.g., Gmail, Banking, Drive, WhatsApp) require user permission and password verification before launching.
+* **Custom App Registry & Vault**: Add custom web or desktop apps and toggle security lock status (🔒 Locked vs 🔓 Open) with 1-click.
+
 ---
 
 ## 🛠️ Technology Stack

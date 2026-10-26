@@ -13,7 +13,8 @@ import {
   Clock, 
   Wifi, 
   Activity,
-  Layers
+  Layers,
+  Rocket
 } from 'lucide-react';
 
 import JarvisCore from './components/JarvisCore';
@@ -23,10 +24,17 @@ import MemoryVault from './components/MemoryVault';
 import PrivacyPermissions from './components/PrivacyPermissions';
 import SafetyFilter from './components/SafetyFilter';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
+import AppLauncherVault from './components/AppLauncherVault';
+import SecurityAuthModal from './components/SecurityAuthModal';
+import { launchApp } from './services/appLauncherService';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('core');
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+
+  // Security Auth Modal State for global / tab launches
+  const [isAppAuthModalOpen, setIsAppAuthModalOpen] = useState(false);
+  const [selectedAppToLaunch, setSelectedAppToLaunch] = useState(null);
 
   // Persistent initial tasks state
   const [tasks, setTasks] = useState(() => {
@@ -98,10 +106,18 @@ export default function App() {
   // Audit Logs & Safety Violation Logs
   const [auditLogs, setAuditLogs] = useState([
     { id: 'log-1', timestamp: new Date().toLocaleTimeString(), action: 'LOCAL_SANDBOX_INITIALIZED: Confidentiality 100%', type: 'info' },
-    { id: 'log-2', timestamp: new Date().toLocaleTimeString(), action: 'PERMISSION_VERIFIED: Calendar & Work Files active', type: 'grant' }
+    { id: 'log-2', timestamp: new Date().toLocaleTimeString(), action: 'PERMISSION_VERIFIED: Calendar & Work Files active', type: 'grant' },
+    { id: 'log-3', timestamp: new Date().toLocaleTimeString(), action: 'APP_LAUNCHER_ARMED: YouTube, Gmail, GitHub & security policies active', type: 'info' }
   ]);
 
   const [safetyLogs, setSafetyLogs] = useState([]);
+
+  const addAuditLog = (action, type = 'info') => {
+    setAuditLogs(prev => [
+      { id: Date.now().toString(), timestamp: new Date().toLocaleTimeString(), action, type },
+      ...prev
+    ]);
+  };
 
   // Auto-save state changes to LocalStorage for zero data loss
   useEffect(() => {
@@ -133,10 +149,7 @@ export default function App() {
     setTasks(prev => [taskItem, ...prev]);
 
     // Record audit log
-    setAuditLogs(prev => [
-      { id: Date.now().toString(), timestamp: new Date().toLocaleTimeString(), action: `TASK_CAPTURED: "${taskItem.title}"`, type: 'info' },
-      ...prev
-    ]);
+    addAuditLog(`TASK_CAPTURED: "${taskItem.title}"`, 'info');
   };
 
   const handleMemoryAdd = (newMemObj) => {
@@ -148,10 +161,7 @@ export default function App() {
     };
     setMemories(prev => [memItem, ...prev]);
 
-    setAuditLogs(prev => [
-      { id: Date.now().toString(), timestamp: new Date().toLocaleTimeString(), action: `BRAIN_MEMORY_ENCRYPTED: Category [${memItem.category}]`, type: 'grant' },
-      ...prev
-    ]);
+    addAuditLog(`BRAIN_MEMORY_ENCRYPTED: Category [${memItem.category}]`, 'grant');
   };
 
   const handleSafetyViolation = (harmfulQuery) => {
@@ -159,14 +169,24 @@ export default function App() {
       { id: Date.now().toString(), timestamp: new Date().toLocaleTimeString(), query: harmfulQuery },
       ...prev
     ]);
-    setAuditLogs(prev => [
-      { id: Date.now().toString(), timestamp: new Date().toLocaleTimeString(), action: `SAFETY_OVERRIDE_TRIGGERED: Query flagged`, type: 'deny' },
-      ...prev
-    ]);
+    addAuditLog(`SAFETY_OVERRIDE_TRIGGERED: Query flagged`, 'deny');
   };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', padding: '1rem 1.5rem' }}>
+      {/* Global App Security Modal */}
+      <SecurityAuthModal 
+        isOpen={isAppAuthModalOpen}
+        app={selectedAppToLaunch}
+        onClose={() => { setIsAppAuthModalOpen(false); setSelectedAppToLaunch(null); }}
+        onAuthorized={(app) => {
+          launchApp(app);
+          setIsAppAuthModalOpen(false);
+          setSelectedAppToLaunch(null);
+          addAuditLog(`APP_LAUNCH_AUTHORIZED: "${app.name}" opened after password verification`, 'grant');
+        }}
+      />
+
       {/* Top Header HUD Bar */}
       <header className="hud-card" style={{ marginBottom: '1rem', padding: '0.85rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         {/* Brand & AI Status */}
@@ -188,7 +208,7 @@ export default function App() {
               J.A.R.V.I.S. <span style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', background: 'rgba(0, 243, 255, 0.15)', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-cyan)' }}>V4.2 INTELLIGENCE</span>
             </h1>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-sub)', letterSpacing: '1px' }}>
-              PERSONAL TASK, WORK & PLAN OPTIMIZATION ASSISTANT
+              PERSONAL TASK, WORK, APP LAUNCHER & SECURITY ASSISTANT
             </div>
           </div>
         </div>
@@ -201,13 +221,13 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
-            <Wifi size={14} color="var(--accent-green)" />
-            <span className="hud-badge hud-badge-green">LOCAL SANDBOX ONLINE</span>
+            <Rocket size={14} color="var(--accent-cyan)" />
+            <span className="hud-badge hud-badge-cyan">APP LAUNCHER READY</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
             <Lock size={14} color="var(--accent-purple)" />
-            <span className="hud-badge hud-badge-purple">100% CONFIDENTIAL</span>
+            <span className="hud-badge hud-badge-purple">SECURITY VAULT ACTIVE</span>
           </div>
         </div>
       </header>
@@ -216,6 +236,7 @@ export default function App() {
       <nav style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         {[
           { id: 'core', label: 'AI CORE CONSOLE', icon: Cpu, badge: null },
+          { id: 'apps', label: 'APP LAUNCHER & SECURITY', icon: Rocket, badge: 'VAULT' },
           { id: 'tasks', label: 'TASK & GOAL MATRIX', icon: CheckSquare, badge: tasks.filter(t => !t.completed).length },
           { id: 'analyzer', label: 'WORK ANALYZER & CORRECTOR', icon: FileCheck, badge: 'AI' },
           { id: 'memory', label: 'JARVIS BRAIN', icon: Database, badge: memories.length },
@@ -260,6 +281,21 @@ export default function App() {
             permissions={permissions}
             safetyLogs={safetyLogs}
             onSafetyViolation={handleSafetyViolation}
+            onAuditLog={addAuditLog}
+          />
+        )}
+        {activeTab === 'apps' && (
+          <AppLauncherVault 
+            onRequestAppLaunch={(app) => {
+              if (app.isSecured) {
+                setSelectedAppToLaunch(app);
+                setIsAppAuthModalOpen(true);
+              } else {
+                launchApp(app);
+                addAuditLog(`APPLICATION_LAUNCHED: "${app.name}" opened directly`, 'grant');
+              }
+            }}
+            auditLogs={auditLogs}
           />
         )}
         {activeTab === 'tasks' && (

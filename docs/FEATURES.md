@@ -50,3 +50,14 @@ Detailed reference guide for all interactive panels and capabilities available i
 
 ## 7. 📊 Work Analytics Dashboard ([AnalyticsDashboard.jsx](file:///c:/Users/praneeth/Desktop/my_projects/personal%20assistent/src/components/AnalyticsDashboard.jsx))
 * Visual task velocity progress bars, urgency bottleneck counters, completion rates, and AI focus window recommendations.
+
+---
+
+## 8. 🚀 Application Launcher & Security Authorization Vault ([AppLauncherVault.jsx](file:///c:/Users/praneeth/Desktop/my_projects/personal%20assistent/src/components/AppLauncherVault.jsx) & [SecurityAuthModal.jsx](file:///c:/Users/praneeth/Desktop/my_projects/personal%20assistent/src/components/SecurityAuthModal.jsx))
+* **Voice & Text Application Launching**: Say or type `"JARVIS open YouTube"`, `"open youtude"`, `"open Gmail"`, `"open GitHub"`, etc.
+* **Security Clearance / Password Protection**:
+  * Secured applications (Gmail, Banking, Google Drive, WhatsApp, Calendar) require user authorization.
+  * Prompts the Operator with a cybernetic security modal requiring the master password / PIN (Default: `jarvis123`, customizable).
+  * Automatically verifies credentials before granting launch access.
+* **App Security Configuration**: Toggle any application between 🔒 Locked (Secured) and 🔓 Open with 1-click.
+* **Custom App Registration**: Register any desktop or web application with custom URL/protocol and security level.

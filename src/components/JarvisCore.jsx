@@ -2,17 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Mic, MicOff, Volume2, VolumeX, Send, Sparkles, ShieldCheck, Cpu, 
   Terminal, RefreshCw, AlertCircle, Plus, Database, Copy, Check, 
-  Lightbulb, ArrowRight, CheckCircle2, Target, ChevronRight, Zap, Globe, Key, Wifi, WifiOff
+  Lightbulb, ArrowRight, CheckCircle2, Target, ChevronRight, Zap, Globe, Key, Wifi, WifiOff,
+  Rocket, Lock, ExternalLink, ShieldAlert
 } from 'lucide-react';
 import { queryJARVIS, queryOfflineJarvis } from '../services/aiService';
 import { fetchOpenSourceData } from '../services/openSearchService';
+import { detectAppCommand, launchApp } from '../services/appLauncherService';
+import SecurityAuthModal from './SecurityAuthModal';
 
-export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safetyLogs, onSafetyViolation }) {
+export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safetyLogs, onSafetyViolation, onAuditLog }) {
   const [messages, setMessages] = useState([
     {
       id: 'init-1',
       sender: 'jarvis',
-      text: "Greetings. I am JARVIS. I support both Online (Google Gemini AI) and 100% On-Device Offline mode so you can organize your tasks and work seamlessly anywhere.",
+      text: "Greetings. I am JARVIS. I can manage your tasks, open applications by name (e.g., 'JARVIS open YouTube' or 'open Gmail'), enforce security authorization on sensitive apps, and generate comprehensive intelligence briefs. How may I assist you today?",
       timestamp: new Date().toLocaleTimeString(),
       type: 'greeting'
     }
@@ -26,6 +29,10 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
   
   // Dual Engine Mode: 'auto' (online with auto offline fallback) vs 'offline' (forced on-device)
   const [engineMode, setEngineMode] = useState('auto');
+
+  // Security Auth Modal State for app launching
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [pendingSecureApp, setPendingSecureApp] = useState(null);
 
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -111,6 +118,63 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
     return harmfulKeywords.some(kw => lower.includes(kw));
   };
 
+  // Execute App Launch with Security Checks
+  const requestAppLaunch = (targetApp) => {
+    if (!targetApp) return;
+
+    if (targetApp.isSecured) {
+      setPendingSecureApp(targetApp);
+      setIsAuthModalOpen(true);
+
+      const challengeMsg = {
+        id: (Date.now() + 1).toString(),
+        sender: 'jarvis',
+        text: `🔒 Security clearance required to launch ${targetApp.name}. Please enter your authorization credentials.`,
+        isAppLaunchCard: true,
+        appPayload: targetApp,
+        appStatus: 'AWAITING_PERMISSION',
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setMessages(prev => [...prev, challengeMsg]);
+      speakText(`Security authorization required for ${targetApp.name}. Please provide your security password.`);
+      if (onAuditLog) onAuditLog(`APP_ACCESS_CHALLENGE: "${targetApp.name}" requested credentials`, 'deny');
+    } else {
+      launchApp(targetApp);
+      const launchMsg = {
+        id: (Date.now() + 1).toString(),
+        sender: 'jarvis',
+        text: `🚀 Opening ${targetApp.name} in a new tab...`,
+        isAppLaunchCard: true,
+        appPayload: targetApp,
+        appStatus: 'LAUNCHED',
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setMessages(prev => [...prev, launchMsg]);
+      speakText(`Opening ${targetApp.name} now, Operator.`);
+      if (onAuditLog) onAuditLog(`APPLICATION_LAUNCHED: "${targetApp.name}" opened directly`, 'grant');
+    }
+  };
+
+  // Handle Security Verification Success
+  const handleSecurityAuthorized = (app) => {
+    launchApp(app);
+    setIsAuthModalOpen(false);
+    setPendingSecureApp(null);
+
+    const authorizedMsg = {
+      id: Date.now().toString(),
+      sender: 'jarvis',
+      text: `✅ Access Granted: Security authorization verified. ${app.name} has been launched using your credentials.`,
+      isAppLaunchCard: true,
+      appPayload: app,
+      appStatus: 'AUTHORIZED_LAUNCH',
+      timestamp: new Date().toLocaleTimeString()
+    };
+    setMessages(prev => [...prev, authorizedMsg]);
+    speakText(`Authentication verified. Access granted. Opening ${app.name} with your credentials.`);
+    if (onAuditLog) onAuditLog(`APP_LAUNCH_AUTHORIZED: "${app.name}" opened after password verification`, 'grant');
+  };
+
   const handleSend = async (queryText = inputQuery) => {
     const trimmed = queryText.trim();
     if (!trimmed || isProcessing) return;
@@ -145,13 +209,23 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
       return;
     }
 
-    // Process Response via Engine (Online API or On-Device Offline Engine)
+    // 1. APPLICATION LAUNCH DETECTOR: e.g. "jarvis open youtube", "open youtude", "open gmail"
+    const detectedApp = detectAppCommand(trimmed);
+    if (detectedApp) {
+      setTimeout(() => {
+        requestAppLaunch(detectedApp);
+        setIsProcessing(false);
+      }, 400);
+      return;
+    }
+
+    // 2. Process General Intelligence via Engine (Online API or On-Device Offline Engine)
     try {
       let payload;
       const isOfflineMode = engineMode === 'offline' || (typeof navigator !== 'undefined' && !navigator.onLine);
 
       if (isOfflineMode) {
-        payload = queryOfflineJarvis(trimmed);
+        payload = await queryOfflineJarvis(trimmed);
       } else {
         const lower = trimmed.toLowerCase();
         if (lower.startsWith('add task') || lower.startsWith('remind me') || lower.startsWith('remember that')) {
@@ -211,6 +285,14 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.5rem', height: 'calc(100vh - 140px)' }}>
+      {/* Security Authorization Modal */}
+      <SecurityAuthModal 
+        isOpen={isAuthModalOpen}
+        app={pendingSecureApp}
+        onClose={() => { setIsAuthModalOpen(false); setPendingSecureApp(null); }}
+        onAuthorized={handleSecurityAuthorized}
+      />
+
       {/* Left Column: Reactive Core Visualizer & Controls */}
       <div className="hud-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', textAlign: 'center' }}>
         <div style={{ width: '100%' }}>
@@ -218,7 +300,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
             <Cpu style={{ color: 'var(--accent-cyan)' }} size={20} />
             <span>AI CORE V4.2</span>
           </div>
-          <div className="hud-sub">HYBRID ONLINE / OFFLINE ENGINE</div>
+          <div className="hud-sub">APPLICATION & INTELLIGENCE ENGINE</div>
         </div>
 
         {/* Dynamic Holographic Sphere Visualizer */}
@@ -347,8 +429,8 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
             />
           </div>
 
-          <div className={`hud-badge ${engineMode === 'offline' ? 'hud-badge-purple' : 'hud-badge-cyan'}`} style={{ width: '100%', justifyContent: 'center' }}>
-            <ShieldCheck size={14} /> {engineMode === 'offline' ? '100% ON-DEVICE OFFLINE MODE' : 'HYBRID AI ENGINE ACTIVE'}
+          <div className="hud-badge hud-badge-cyan" style={{ width: '100%', justifyContent: 'center' }}>
+            <ShieldCheck size={14} /> APP LAUNCHER & SECURITY READY
           </div>
         </div>
       </div>
@@ -359,7 +441,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-cyan)', marginBottom: '1rem' }}>
           <div className="hud-title" style={{ fontSize: '1rem' }}>
             <Terminal size={18} />
-            <span>AI COMMAND & KNOWLEDGE CONSOLE</span>
+            <span>AI COMMAND & APPLICATION CONSOLE</span>
           </div>
           <button 
             onClick={() => setMessages([messages[0]])} 
@@ -371,21 +453,22 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
           </button>
         </div>
 
-        {/* Quick Recommendation Preset Chips */}
+        {/* Quick Command Preset Chips (Including Application Launchers) */}
         <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
           {[
-            "⚡ Recommend schedule optimizations",
-            "🚀 Break down project execution steps",
-            "📊 Recommend workload priorities",
-            "✍️ Generate email action plan"
+            { label: "▶️ Open YouTube", cmd: "jarvis open youtube" },
+            { label: "🔒 Open Gmail (Protected)", cmd: "jarvis open gmail" },
+            { label: "🐙 Open GitHub", cmd: "jarvis open github" },
+            { label: "💬 Open WhatsApp", cmd: "jarvis open whatsapp" },
+            { label: "⚡ Recommend schedule", cmd: "Recommend schedule optimizations" }
           ].map((preset, idx) => (
             <button
               key={idx}
-              onClick={() => { setInputQuery(preset); handleSend(preset); }}
+              onClick={() => { setInputQuery(preset.cmd); handleSend(preset.cmd); }}
               style={{
-                background: 'rgba(0, 243, 255, 0.08)',
-                border: '1px solid var(--border-cyan)',
-                color: 'var(--accent-cyan)',
+                background: preset.cmd.includes('gmail') || preset.cmd.includes('whatsapp') ? 'rgba(255, 0, 85, 0.1)' : 'rgba(0, 243, 255, 0.08)',
+                border: preset.cmd.includes('gmail') || preset.cmd.includes('whatsapp') ? '1px solid rgba(255, 0, 85, 0.4)' : '1px solid var(--border-cyan)',
+                color: preset.cmd.includes('gmail') || preset.cmd.includes('whatsapp') ? '#ff4d79' : 'var(--accent-cyan)',
                 borderRadius: '16px',
                 padding: '0.3rem 0.75rem',
                 fontSize: '0.75rem',
@@ -394,7 +477,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
                 transition: 'all 0.2s ease'
               }}
             >
-              {preset}
+              {preset.label}
             </button>
           ))}
         </div>
@@ -432,8 +515,82 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
                 >
                   {msg.text}
                 </div>
+              ) : msg.isAppLaunchCard ? (
+                /* Application Launch Response Card */
+                <div 
+                  style={{
+                    maxWidth: '92%',
+                    width: '100%',
+                    padding: '1.1rem',
+                    borderRadius: '12px 12px 12px 2px',
+                    background: msg.appStatus === 'AWAITING_PERMISSION' 
+                      ? 'linear-gradient(135deg, rgba(255, 0, 85, 0.15), rgba(5, 8, 17, 0.95))'
+                      : 'linear-gradient(135deg, rgba(0, 255, 157, 0.15), rgba(5, 8, 17, 0.95))',
+                    border: msg.appStatus === 'AWAITING_PERMISSION' ? '1px solid #ff0055' : '1px solid var(--accent-green)',
+                    boxShadow: msg.appStatus === 'AWAITING_PERMISSION' ? '0 0 20px rgba(255,0,85,0.2)' : '0 0 20px rgba(0,255,157,0.2)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Rocket size={18} color={msg.appStatus === 'AWAITING_PERMISSION' ? '#ff0055' : 'var(--accent-green)'} />
+                      {msg.appPayload?.name}
+                    </div>
+                    <span className={`hud-badge ${msg.appStatus === 'AWAITING_PERMISSION' ? 'hud-badge-red' : 'hud-badge-green'}`}>
+                      {msg.appStatus === 'AWAITING_PERMISSION' ? '🔒 SECURITY ACCESS REQUIRED' : '🚀 APPLICATION LAUNCHED'}
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: '1.4' }}>
+                    {msg.text}
+                  </p>
+
+                  <div style={{
+                    background: 'rgba(5, 8, 17, 0.7)',
+                    padding: '0.6rem 0.8rem',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '0.75rem',
+                    border: '1px solid rgba(255, 255, 255, 0.08)'
+                  }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Target: <code style={{ color: 'var(--accent-cyan)' }}>{msg.appPayload?.url}</code></span>
+                    <span style={{ color: 'var(--text-dim)' }}>Category: {msg.appPayload?.category}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.2rem' }}>
+                    {msg.appStatus === 'AWAITING_PERMISSION' ? (
+                      <button
+                        onClick={() => { setPendingSecureApp(msg.appPayload); setIsAuthModalOpen(true); }}
+                        className="hud-btn"
+                        style={{
+                          background: 'linear-gradient(135deg, #ff0055, #7000ff)',
+                          borderColor: '#ff0055',
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.8rem',
+                          color: '#fff'
+                        }}
+                      >
+                        <Key size={14} />
+                        <span>ENTER PASSWORD & OPEN {msg.appPayload?.name}</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => launchApp(msg.appPayload)}
+                        className="hud-btn hud-btn-primary"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                      >
+                        <ExternalLink size={14} />
+                        <span>OPEN / RE-LAUNCH {msg.appPayload?.name}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               ) : (
-                /* JARVIS Response Card with Complete Output */
+                /* Standard Response Card */
                 <div 
                   style={{
                     maxWidth: '96%',
@@ -458,10 +615,9 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
                       {msg.isSafetyAlert ? <AlertCircle size={18} /> : <Sparkles size={18} color="var(--accent-cyan)" />}
                       {msg.text}
                     </div>
-                    {msg.payload?.providerName && (
-                      <span className={`hud-badge ${msg.payload.isLiveAI ? 'hud-badge-green' : 'hud-badge-purple'}`} style={{ fontSize: '0.75rem' }}>
-                        {msg.payload.isLiveAI ? <Wifi size={10} /> : <WifiOff size={10} />}
-                        {msg.payload.providerName}
+                    {msg.payload?.source && (
+                      <span className="hud-badge hud-badge-green" style={{ fontSize: '0.75rem' }}>
+                        <Globe size={10} /> {msg.payload.source}
                       </span>
                     )}
                   </div>
@@ -577,7 +733,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
           <input 
             type="text"
             className="hud-input"
-            placeholder={engineMode === 'offline' ? "Type command for Offline Local Engine..." : "Ask JARVIS for recommendations, task breakdowns, output drafts..."}
+            placeholder="Command JARVIS (e.g., 'JARVIS open YouTube', 'open Gmail', 'open Calculator', 'Recommend schedule')..."
             value={inputQuery}
             onChange={e => setInputQuery(e.target.value)}
             disabled={isProcessing}
