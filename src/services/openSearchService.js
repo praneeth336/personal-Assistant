@@ -257,7 +257,7 @@ export async function fetchOpenSourceData(query) {
   const searchTerms = cleanSubject || trimmed;
   const sources = [];
 
-  // 4. Try Wikipedia REST API for clean, direct summary
+  // 4. Try Wikipedia REST API for clean, natural summary (ChatGPT style)
   try {
     const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(searchTerms)}`;
     const summaryRes = await fetch(summaryUrl);
@@ -272,21 +272,9 @@ export async function fetchOpenSourceData(query) {
           });
         }
 
-        const paragraphs = data.extract.split('\n\n').filter(p => p.trim());
-        const lead = paragraphs[0] || data.extract;
-
-        // Extract key sentence highlights for bullets if paragraph is long
-        const sentences = lead.split('. ').filter(s => s.trim().length > 25);
-        let bulletSection = '';
-        if (sentences.length >= 3) {
-          bulletSection = `\n\n### Key Highlights\n` + 
-            sentences.slice(1, 5).map(s => `- ${s.trim()}${s.endsWith('.') ? '' : '.'}`).join('\n');
-        }
-
-        const formattedAnswer = `## ${data.title}${data.description ? ` *(${data.description})*` : ''}\n\n${sentences[0] || lead}.${bulletSection}`;
-
+        // Return natural, flowing text directly like ChatGPT
         return {
-          answer: formattedAnswer,
+          answer: data.extract.trim(),
           sources: sources,
           providerName: 'Wikipedia Open Knowledge',
           summary: data.title
@@ -320,18 +308,9 @@ export async function fetchOpenSourceData(query) {
               });
             }
 
-            const sentences = sum2Data.extract.split('. ').filter(s => s.trim().length > 20);
-            const overview = sentences.slice(0, 2).join('. ') + (sentences[0]?.endsWith('.') ? '' : '.');
-            let bulletSection = '';
-            if (sentences.length > 2) {
-              bulletSection = `\n\n### Key Details\n` + 
-                sentences.slice(2, 6).map(s => `- ${s.trim()}${s.endsWith('.') ? '' : '.'}`).join('\n');
-            }
-
-            const formattedAnswer = `## ${sum2Data.title}${sum2Data.description ? ` *(${sum2Data.description})*` : ''}\n\n${overview}${bulletSection}`;
-
+            // Return natural, flowing text directly like ChatGPT
             return {
-              answer: formattedAnswer,
+              answer: sum2Data.extract.trim(),
               sources: sources,
               providerName: 'Wikipedia Open Knowledge',
               summary: sum2Data.title
@@ -357,19 +336,8 @@ export async function fetchOpenSourceData(query) {
           url: ddg.AbstractURL || `https://duckduckgo.com/?q=${encodeURIComponent(searchTerms)}`
         });
 
-        let relatedList = '';
-        if (ddg.RelatedTopics && ddg.RelatedTopics.length > 0) {
-          const validTopics = ddg.RelatedTopics.filter(t => t.Text).slice(0, 4);
-          if (validTopics.length > 0) {
-            relatedList = `\n\n### Related Concepts\n` + 
-              validTopics.map(t => `- ${t.Text}`).join('\n');
-          }
-        }
-
-        const formattedAnswer = `## ${ddg.Heading || searchTerms}\n\n${ddg.AbstractText}${relatedList}`;
-
         return {
-          answer: formattedAnswer,
+          answer: ddg.AbstractText.trim(),
           sources: sources,
           providerName: 'DuckDuckGo Open Search',
           summary: ddg.Heading || searchTerms
@@ -380,15 +348,8 @@ export async function fetchOpenSourceData(query) {
     console.warn("DuckDuckGo lookup skipped:", err);
   }
 
-  // 7. General Knowledge Direct Fallback (Clean, Direct, Informative)
-  const directFallback = `## ${cleanSubject.toUpperCase()}\n\n${cleanSubject} is a fundamental concept in this domain. 
-
-### Core Concepts & Principles:
-- **Definition & Context**: ${cleanSubject} involves specific principles, operational rules, and key mechanisms that govern its behavior and implementation.
-- **Key Methodologies**: Standard practices emphasize systematic analysis, rigorous testing, and verification against established standards.
-- **Application**: Often leveraged to solve targeted problems, streamline workflows, or optimize existing system architectures.
-
-*For live real-time web verification, you can also search directly on [DuckDuckGo](https://duckduckgo.com/?q=${encodeURIComponent(cleanSubject)}) or connect an AI API Key in the AI Settings modal.*`;
+  // 7. General Knowledge Direct Fallback (Natural Conversational Prose)
+  const directFallback = `${cleanSubject} is an important concept in this domain. In general terms, it encompasses the core principles, processes, and applications that define how it works and how it is implemented in practice.\n\nDepending on what you need, you can explore its foundational mechanisms, standard approaches, or how it integrates into broader systems. Feel free to ask if you'd like an explanation of a specific aspect!`;
 
   return {
     answer: directFallback,

@@ -24,7 +24,10 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
   const [inputQuery, setInputQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [speechEnabled, setSpeechEnabled] = useState(true);
+  const [speechEnabled, setSpeechEnabled] = useState(() => {
+    const saved = localStorage.getItem('jarvis_voice_output_enabled');
+    return saved !== null ? JSON.parse(saved) : false;
+  });
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   
@@ -72,7 +75,15 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
 
   // Voice output synthesizer
   const speakText = (text) => {
-    if (!speechEnabled || !('speechSynthesis' in window)) return;
+    // If voice output is disabled, immediately halt any speech and exit
+    if (!speechEnabled || !('speechSynthesis' in window)) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsSpeaking(false);
+      return;
+    }
+
     window.speechSynthesis.cancel();
     
     const cleanText = text.replace(/[*_#`~=]/g, '');
@@ -89,6 +100,30 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
     utterance.onerror = () => setIsSpeaking(false);
 
     window.speechSynthesis.speak(utterance);
+  };
+
+  // Dedicated Voice Output Toggle: stops active voice & assistant immediately on uncheck
+  const handleToggleVoiceOutput = (enabled) => {
+    setSpeechEnabled(enabled);
+    localStorage.setItem('jarvis_voice_output_enabled', JSON.stringify(enabled));
+
+    if (!enabled) {
+      // 1. Immediately cancel all active or pending speech synthesis audio
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsSpeaking(false);
+
+      // 2. Stop voice assistant microphone listening if currently active
+      if (isListening && recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.warn("Recognition stop error:", e);
+        }
+        setIsListening(false);
+      }
+    }
   };
 
   const toggleListening = () => {
@@ -245,7 +280,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
       const firstLine = (payload.answer || payload.summary || '')
         .split('\n')
         .find(l => l.trim() && !l.trim().startsWith('#')) || payload.summary;
-      if (firstLine) speakText(firstLine);
+      if (firstLine && speechEnabled) speakText(firstLine);
     } catch (err) {
       console.error("AI query error:", err);
       const errorMsg = {
@@ -433,7 +468,7 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
             <input 
               type="checkbox" 
               checked={speechEnabled} 
-              onChange={e => setSpeechEnabled(e.target.checked)} 
+              onChange={e => handleToggleVoiceOutput(e.target.checked)} 
               style={{ accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
             />
           </div>
