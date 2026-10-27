@@ -7,9 +7,11 @@ export const AI_PROVIDERS = {
   OPENAI: 'openai'
 };
 
+export const CONFIGURED_OPENAI_KEY = 'sk-abcdef1234567890abcdef1234567890abcdef12';
+
 export const getStoredAISettings = () => {
-  const provider = localStorage.getItem('jarvis_ai_provider') || AI_PROVIDERS.LOCAL;
-  const apiKey = localStorage.getItem('jarvis_ai_api_key') || '';
+  const provider = localStorage.getItem('jarvis_ai_provider') || AI_PROVIDERS.OPENAI;
+  const apiKey = localStorage.getItem('jarvis_ai_api_key') || CONFIGURED_OPENAI_KEY;
   const model = localStorage.getItem('jarvis_ai_model') || (provider === AI_PROVIDERS.GEMINI ? 'gemini-1.5-flash' : 'gpt-4o-mini');
   return { provider, apiKey, model };
 };
@@ -122,11 +124,14 @@ export async function queryJARVIS(promptText, forcedOffline = false) {
           answer: rawContent.trim(),
           sources: [],
           isLiveAI: true,
-          providerName: `OpenAI ChatGPT (${model})`,
+          providerName: `OpenAI ChatGPT (${model || 'gpt-4o-mini'})`,
           summary: promptText,
           isTaskAction: taskIntent.isTaskAction,
           taskData: taskIntent.taskData
         };
+      } else {
+        const errJson = await response.json().catch(() => ({}));
+        console.warn("OpenAI API response status:", response.status, errJson);
       }
     } catch (err) {
       console.warn("OpenAI API call failed, switching to Direct Knowledge Engine:", err);

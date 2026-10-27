@@ -1,6 +1,6 @@
 // JARVIS Application Launcher & Security Authorization Service
 
-export const DEFAULT_MASTER_PASSWORD = 'jarvis123';
+export const DEFAULT_MASTER_PASSWORD = 'Jyo_412';
 
 export const INITIAL_APPS = [
   {
@@ -149,7 +149,13 @@ export function saveRegisteredApps(apps) {
 
 // Get the master password for secured application verification
 export function getMasterPassword() {
-  return localStorage.getItem('jarvis_security_password') || DEFAULT_MASTER_PASSWORD;
+  const stored = localStorage.getItem('jarvis_security_password');
+  // Auto-migrate from legacy default if present
+  if (!stored || stored === 'jarvis123') {
+    localStorage.setItem('jarvis_security_password', DEFAULT_MASTER_PASSWORD);
+    return DEFAULT_MASTER_PASSWORD;
+  }
+  return stored;
 }
 
 // Set a new master password

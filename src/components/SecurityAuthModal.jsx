@@ -165,7 +165,7 @@ export default function SecurityAuthModal({ isOpen, app, onClose, onAuthorized }
               </button>
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '0.3rem' }}>
-              Default password: <code style={{ color: 'var(--accent-cyan)', background: 'rgba(0,243,255,0.1)', padding: '1px 5px', borderRadius: '3px' }}>jarvis123</code> (configurable in App Launcher & Security Vault)
+              Enter your master authorization credential to unlock this secured application.
             </div>
           </div>
 

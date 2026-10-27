@@ -432,7 +432,7 @@ export default function AppLauncherVault({ onRequestAppLaunch, auditLogs }) {
           <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
             <div>
               <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>
-                Current Password (Default: jarvis123)
+                Current Authorization Password
               </label>
               <input 
                 type="password"
