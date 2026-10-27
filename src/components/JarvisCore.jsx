@@ -11,7 +11,7 @@ import { detectAppCommand, launchApp } from '../services/appLauncherService';
 import SecurityAuthModal from './SecurityAuthModal';
 import MarkdownViewer from './MarkdownViewer';
 
-export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safetyLogs, onSafetyViolation, onAuditLog }) {
+export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safetyLogs, onSafetyViolation, onAuditLog, onOpenKeySlot }) {
   const [messages, setMessages] = useState([
     {
       id: 'init-1',
@@ -441,6 +441,28 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
           <div className="hud-badge hud-badge-cyan" style={{ width: '100%', justifyContent: 'center' }}>
             <ShieldCheck size={14} /> APP LAUNCHER & SECURITY READY
           </div>
+
+          {onOpenKeySlot && (
+            <button
+              onClick={onOpenKeySlot}
+              className="hud-btn"
+              style={{
+                width: '100%',
+                padding: '0.6rem',
+                borderColor: 'var(--accent-cyan)',
+                color: 'var(--accent-cyan)',
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                background: 'rgba(0, 243, 255, 0.08)'
+              }}
+            >
+              <Key size={14} />
+              <span>AI KEY SLOT & TESTER</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -452,14 +474,26 @@ export default function JarvisCore({ onTaskAdd, onMemoryAdd, permissions, safety
             <Terminal size={18} />
             <span>AI COMMAND & APPLICATION CONSOLE</span>
           </div>
-          <button 
-            onClick={() => setMessages([messages[0]])} 
-            className="hud-btn" 
-            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
-            title="Clear Chat Stream"
-          >
-            <RefreshCw size={12} /> CLEAR CONSOLE
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {onOpenKeySlot && (
+              <button 
+                onClick={onOpenKeySlot} 
+                className="hud-btn" 
+                style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                title="Open API Key Integration & Testing Slot"
+              >
+                <Key size={12} /> KEY SLOT
+              </button>
+            )}
+            <button 
+              onClick={() => setMessages([messages[0]])} 
+              className="hud-btn" 
+              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
+              title="Clear Chat Stream"
+            >
+              <RefreshCw size={12} /> CLEAR CONSOLE
+            </button>
+          </div>
         </div>
 
         {/* Quick Command Preset Chips (App Launchers & Direct Knowledge Queries) */}

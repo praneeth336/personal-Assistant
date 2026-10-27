@@ -16,6 +16,14 @@ Detailed reference guide for all interactive panels and capabilities available i
 
 ---
 
+## 2. 🔑 AI Key Slot & Diagnostics Bench ([APIKeySlotPanel.jsx](file:///c:/Users/praneeth/Desktop/my_projects/personal%20assistent/src/components/APIKeySlotPanel.jsx))
+* **Dedicated Integration Slot**: Paste any API key directly into the slot with auto-detection for OpenAI (`sk-`), Google Gemini (`AIzaSy`), or Groq (`gsk_`).
+* **Live Connection Test Bench**: 1-click **TEST KEY CONNECTION** executes a real ping to the selected provider, calculating latency in milliseconds and reporting exact validation/quota status (e.g. HTTP 200 OK, HTTP 401 Unauthorized, HTTP 429 Quota Exceeded).
+* **Multi-Slot Key Manager**: Save multiple keys into customizable slots and switch the active AI engine with a single click.
+* **Live Query Output Sandbox**: Test actual prompt generation quality with the active key right inside the panel.
+
+---
+
 ## 2. 📋 Task & Goal Matrix ([TaskManager.jsx](file:///c:/Users/praneeth/Desktop/my_projects/personal%20assistent/src/components/TaskManager.jsx))
 * **Eisenhower Prioritization**: Organize tasks into *Urgent*, *High Priority*, *Routine Work*, and *Low Priority*.
 * **Step Breakdown Checklist**: Interactive sub-task completion tracking.

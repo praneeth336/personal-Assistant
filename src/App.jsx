@@ -14,7 +14,8 @@ import {
   Wifi, 
   Activity,
   Layers,
-  Rocket
+  Rocket,
+  Key
 } from 'lucide-react';
 
 import JarvisCore from './components/JarvisCore';
@@ -26,6 +27,7 @@ import SafetyFilter from './components/SafetyFilter';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import AppLauncherVault from './components/AppLauncherVault';
 import SecurityAuthModal from './components/SecurityAuthModal';
+import APIKeySlotPanel from './components/APIKeySlotPanel';
 import { launchApp } from './services/appLauncherService';
 
 export default function App() {
@@ -229,6 +231,24 @@ export default function App() {
             <Lock size={14} color="var(--accent-purple)" />
             <span className="hud-badge hud-badge-purple">SECURITY VAULT ACTIVE</span>
           </div>
+
+          <button
+            onClick={() => setActiveTab('apislot')}
+            className="hud-btn"
+            style={{ 
+              fontSize: '0.75rem', 
+              padding: '0.3rem 0.7rem', 
+              borderColor: 'var(--accent-cyan)',
+              color: 'var(--accent-cyan)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem'
+            }}
+            title="Open AI Key Slot & Testing Bench"
+          >
+            <Key size={13} />
+            <span>AI KEY SLOT & TESTER</span>
+          </button>
         </div>
       </header>
 
@@ -236,6 +256,7 @@ export default function App() {
       <nav style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         {[
           { id: 'core', label: 'AI CORE CONSOLE', icon: Cpu, badge: null },
+          { id: 'apislot', label: 'AI KEY SLOT & TESTER', icon: Key, badge: 'SLOT' },
           { id: 'apps', label: 'APP LAUNCHER & SECURITY', icon: Rocket, badge: 'VAULT' },
           { id: 'tasks', label: 'TASK & GOAL MATRIX', icon: CheckSquare, badge: tasks.filter(t => !t.completed).length },
           { id: 'analyzer', label: 'WORK ANALYZER & CORRECTOR', icon: FileCheck, badge: 'AI' },
@@ -282,6 +303,14 @@ export default function App() {
             safetyLogs={safetyLogs}
             onSafetyViolation={handleSafetyViolation}
             onAuditLog={addAuditLog}
+            onOpenKeySlot={() => setActiveTab('apislot')}
+          />
+        )}
+        {activeTab === 'apislot' && (
+          <APIKeySlotPanel 
+            onKeyActivated={(cfg) => {
+              addAuditLog(`AI_KEY_ACTIVATED: Provider [${cfg.provider}] Model [${cfg.model}]`, 'grant');
+            }}
           />
         )}
         {activeTab === 'apps' && (

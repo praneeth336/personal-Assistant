@@ -18,6 +18,11 @@
 * **External AI Integration**: Optionally connect Google Gemini or OpenAI ChatGPT API keys for frontier LLM reasoning.
 * **Web Speech Voice Interaction**: Hands-free voice recognition input and dynamic audio response output.
 
+### 2. 🔑 Dedicated AI Key Slot & Testing Bench
+* **Live Connection Tester**: Paste any API key and test it live with 1 click to verify validity, ping latency, and account quotas (OpenAI, Google Gemini, Groq, or Free Local).
+* **Multi-Slot Bench**: Save multiple keys and switch active engines on the fly to compare which model fits your needs.
+* **Sandbox Prompt Runner**: Test real AI response quality directly inside the key slot panel before using it in the main console.
+
 ### 2. 📋 Eisenhower Task & Goal Matrix
 * **Quadrant Prioritization**: Organize work into *Urgent & Important*, *High Priority*, *Routine Work*, and *Low Priority*.
 * **Automated Sub-Task Generator**: Automatically breaks down complex goals into step-by-step checklists.
