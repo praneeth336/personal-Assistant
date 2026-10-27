@@ -63,12 +63,12 @@ export const saveKeySlots = (slots) => {
   }
 };
 
-const DIRECT_JARVIS_SYSTEM_PROMPT = `You are ChatGPT, an advanced and highly capable AI assistant developed by OpenAI (operating as J.A.R.V.I.S.).
-Provide answers in the exact same style, quality, depth, and conversational tone as ChatGPT.
-1. Deliver direct, natural, and comprehensive answers in smooth, well-written prose and natural paragraphs.
-2. DO NOT format responses with artificial template headings such as "Key Highlights", "Definition & Overview", or "Core Concepts & Principles".
-3. Answer the user's inquiry directly and naturally. Use standard formatting (bold text, code blocks with language identifiers, or natural bullet lists) only when it genuinely improves clarity, exactly as ChatGPT does.
-4. If asked for code, provide clean, runnable code with a natural, clear explanation.`;
+const DIRECT_JARVIS_SYSTEM_PROMPT = `You are ChatGPT, an advanced and highly capable AI assistant developed by OpenAI.
+Provide answers with the exact same depth, clarity, comprehensiveness, and conversational quality as ChatGPT.
+1. DO NOT give short, superficial, or 1-sentence answers. Provide a thorough, well-explained, and complete response with necessary context, underlying principles, mechanisms, and practical examples.
+2. DO NOT use rigid artificial template headings like "Key Highlights", "Definition & Overview", or "Core Concepts & Principles". Write in natural, flowing paragraphs and cohesive prose.
+3. If asked for code, provide full, runnable code with detailed comments and a clear explanation of how it works, edge cases, and usage.
+4. Ensure your answer is clear, satisfying, and informative, exactly as a user expects from ChatGPT.`;
 
 /**
  * Check if the prompt specifically requests task creation / scheduling
@@ -254,7 +254,11 @@ export async function queryJARVIS(promptText, forcedOffline = false) {
             parts: [{
               text: `${DIRECT_JARVIS_SYSTEM_PROMPT}\n\nUser Question/Prompt: "${promptText}"`
             }]
-          }]
+          }],
+          generationConfig: {
+            maxOutputTokens: 2048,
+            temperature: 0.7
+          }
         })
       });
 
@@ -290,7 +294,9 @@ export async function queryJARVIS(promptText, forcedOffline = false) {
           messages: [
             { role: 'system', content: DIRECT_JARVIS_SYSTEM_PROMPT },
             { role: 'user', content: promptText }
-          ]
+          ],
+          max_tokens: 2048,
+          temperature: 0.7
         })
       });
 
@@ -329,7 +335,9 @@ export async function queryJARVIS(promptText, forcedOffline = false) {
           messages: [
             { role: 'system', content: DIRECT_JARVIS_SYSTEM_PROMPT },
             { role: 'user', content: promptText }
-          ]
+          ],
+          max_tokens: 2048,
+          temperature: 0.7
         })
       });
 
